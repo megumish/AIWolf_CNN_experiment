@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
 import os, sys, shutil
 import logging
-from util.log_to_image import conf, gen
+sys.path.append('/home/megumish/aiwolf/experiment')
+print(sys.path)
+from common.log_to_data import conf, gen
 
 __logger = logging.getLogger(__name__)
 def parse_args(config):
@@ -93,4 +95,4 @@ if __name__ == "__main__":
     config = conf.Config()
     parse_args(config)
     gen.init(config)
-    gen.run()
+    gen.run(converter.CNN_converter())
