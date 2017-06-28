@@ -2,11 +2,11 @@ from argparse import ArgumentParser
 import os, sys, shutil
 import logging
 sys.path.append('/home/megumish/aiwolf/experiment')
-print(sys.path)
 from common.log_to_data import conf, gen
+import converter
 
 __logger = logging.getLogger(__name__)
-def parse_args(config):
+def parse_args(config, message_formatter):
     description = 'AIWolf log to image.'
     argparser = ArgumentParser(description=description)
 
@@ -44,24 +44,26 @@ def parse_args(config):
         message_level = logging.ERROR
     __logger.setLevel(message_level)
     handler.setLevel(message_level)
+    handler.setFormatter(message_formatter)
     __logger.addHandler(handler)
-    config.message_level = message_level
+    __logger.debug("Nyan")
+    config.set_message_level_and_formatter(message_level=message_level, message_formatter=message_formatter)
 
     config.is_dry_run = args.dry_run
 
-    config.input_dir = args.input_dir
-    if not os.path.exists(config.input_dir):
+    config.set_input_dir(args.input_dir)
+    if not os.path.exists(config.get_input_dir()):
         __logger.error("not exist error INPUT DIR:%s" % (config.input_dir))
         sys.exit()
 
-    config.output_num = args.output_num
+    config.set_output_num(args.output_num)
 
     if hasattr(args, 'output_dir'):
-        config.output_dir = args.output_dir
+        config.set_output_dirs(args.output_dir)
     else:
-        config.output_dir = config.input_dir + '_out'
-    if os.path.exists(config.output_dir):
-        shutil.rmtree(config.output_dir)
+        config.set_output_dirs(config.get_input_dir() + '_out')
+    if os.path.exists(config.get_output_dir()):
+        shutil.rmtree(config.get_output_dir())
 
     config.include_players = []
     config.except_players = []
@@ -90,9 +92,12 @@ def parse_args(config):
         config.choice = "winner"
     elif args.loser:
         config.choice = "loser"
+
+    return message_level
         
 if __name__ == "__main__":
     config = conf.Config()
-    parse_args(config)
-    gen.init(config)
-    gen.run(converter.CNN_converter())
+    message_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    message_level = parse_args(config, message_formatter)
+    gen.init(config, message_level=message_level, message_formatter=message_formatter)
+    gen.run(converter.CNN_converter(message_level=message_level, message_formatter=message_formatter))
