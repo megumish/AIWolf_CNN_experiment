@@ -17,7 +17,7 @@ def parse_args(config, message_formatter):
     message_mode.add_argument('-v', '--verbose', action='store_true', help='show verbose message')
     message_mode.add_argument('-q', '--quiet', action='store_true', help='quiet any message')
 
-    argparser.add_argument('-o', '--output', metavar='OUTPUT_DIR', dest='ouput_dir', help='output to a directory named <directory>')
+    argparser.add_argument('-o', '--output_dir', metavar='OUTPUT_DIR', dest='ouput_dir', help='output to a directory named <directory>')
 
     argparser.add_argument('--dry_run', action='store_true', help='remove the output file after execution')
 
