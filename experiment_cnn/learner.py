@@ -1,4 +1,5 @@
 import logging
+import os
 import numpy
 import chainer
 import chainer.links as L
@@ -6,7 +7,7 @@ import chainer.functions as F
 from chainer import cuda, optimizers
 import shutil
 import sys
-sys.path.append('/home/megumish/aiwolf/experiment')
+sys.path.append(os.environ['KAWADA_AIWOLF_EXPERIMENT_PATH'])
 from common import log_to_data
 import common
 
@@ -21,20 +22,20 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         self.__logger.addHandler(handler)
 
     def build(self, learn_info):
-        build_info = open('%s/build.txt' % (learn_info.output_model), 'w')
+        build_info = open(os.path.join(learn_info.output_model, 'build.txt'), 'w')
         model = Model()
         model.input_layer = 1
         model.input_size = learn_info.data.image_size
         model.input_pad = 2
         model.input_filter = model.input_size // 4
-        model.conv0_output_layer = 64
+        model.conv0_output_layer = 16
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.input_layer, model.conv0_output_layer, model.input_filter, model.input_pad))
         # nothing pooling
         model.input_size += model.input_pad * 2
         model.hidden0_size = model.input_size - model.input_filter + 1
         model.hidden0_pad = 1
         model.hidden0_filter = model.hidden0_size // 2
-        model.conv1_output_layer = 256
+        model.conv1_output_layer = 32
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.conv0_output_layer, model.conv1_output_layer, model.hidden0_filter, model.hidden0_pad))
         # nothing pooling
         model.hidden0_size += model.hidden0_pad * 2
@@ -71,9 +72,8 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
             print('train mean loss: %f' % (sum_loss  / N))
             print('train mean accuracy: %f' % (sum_accuracy / N))
 
-    def test(self, learn_info):
+    def test(self, test_info):
         pass
-
 class Model:
     pass
 

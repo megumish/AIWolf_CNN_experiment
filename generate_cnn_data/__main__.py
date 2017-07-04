@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os, sys, shutil
 import logging
-sys.path.append('/home/megumish/aiwolf/experiment')
+sys.path.append(os.environ['KAWADA_AIWOLF_EXPERIMENT_PATH'])
 from common.log_to_data import conf, gen
 import converter
 

@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os, sys, shutil
 import logging
-sys.path.append('/home/megumish/aiwolf/experiment')
+sys.path.append(os.environ['KAWADA_AIWOLF_EXPERIMENT_PATH'])
 from common.learn_data import conf, gen, loader
 import learner
 
@@ -58,8 +58,7 @@ def parse_args(config, message_formatter):
         config.set_output_model(args.output_model)
     else:
         input_name = config.get_input_dir()
-        if '/' in input_name:
-            input_name = input_name.split('/')[-1]
+        input_name = os.path.normpath(input_name)
         config.set_output_model(input_name + '_out')
 
     config.use_gpu = args.use_gpu
@@ -80,5 +79,6 @@ if __name__ == "__main__":
     config = conf.Config()
     message_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     message_level = parse_args(config, message_formatter)
-    gen.init(config, loader.image_loader.ImageLoader(), message_level=message_level, message_formatter=message_formatter)
+    cnn_loader = loader.image_loader.ImageLoader(message_level=message_level, message_formatter=message_formatter)
+    gen.init(config, cnn_loader, message_level=message_level, message_formatter=message_formatter)
     gen.run(learner.CNN_SimpleLearner(message_level=message_level, message_formatter=message_formatter))

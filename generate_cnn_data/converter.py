@@ -1,9 +1,10 @@
 import logging
+import os
 import numpy
 from PIL import Image
 import shutil
 import sys
-sys.path.append('/home/megumish/aiwolf/experiment')
+sys.path.append(os.environ['KAWADA_AIWOLF_EXPERIMENT_PATH'])
 from common import log_to_data
 import common
 
@@ -34,7 +35,7 @@ class CNN_converter(log_to_data.converter.BaseConverter):
             targets = convert_info.narrow_down_targets(log_rows, game_setting)
             data_set = DataSet(self.__logger, self.__image_size, convert_info, game_setting, log_index)
             for num_of_player in range(game_setting.player_num):
-                answer_file = open('%s/%s_%s' % (convert_info.output_answer_dir, log_index, num_of_player), 'w')
+                answer_file = open(os.path.join(convert_info.output_answer_dir, '%s_%s' % (log_index, num_of_player)), 'w')
                 answer_file.write(str(common.role.str_to_index(game_setting.player_roles[num_of_player])))
                 answer_file.close()
             for log_row in log_rows:
@@ -87,8 +88,8 @@ class DataSet:
         image = Image.fromarray(numpy.uint8(self.__datas[subject]))
         #image = image.resize((self.__data_size * 100, self.__data_size * 100))
         if self.__mode == 'train':
-            image.save('%s/%s_%s_%s.png' % (self.__output_data_dir, self.__log_index, subject, self.__filenum[subject]))
+            image.save(os.path.join(self.__output_data_dir, '%s_%s_%s.png' % (self.__log_index, subject, self.__filenum[subject])))
         if self.__mode == 'test':
-            image.save('%s/%s/%s_%s_%s.png' % (self.__output_data_dir, game_setting.player_roles[subject], self.__log_index, subject, self.__filenum[subject]))
+            image.save(os.path.join(self.__output_data_dir, game_setting.player_roles[subject], '%s_%s_%s.png' % (self.__log_index, subject, self.__filenum[subject])))
         convert_info.role_filenum_map[role] += 1
         self.__filenum[subject] += 1

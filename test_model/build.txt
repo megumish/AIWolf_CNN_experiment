@@ -1,1 +1,0 @@
-conv0=L.Convolution2D(1, 64, 4, pad=2)conv0=L.Convolution2D(64, 256, 8, pad=1)l0=L.Linear(36864, 2304)l1=L.Linear(2304, 6)
