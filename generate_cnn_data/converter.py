@@ -26,18 +26,15 @@ class CNN_converter(log_to_data.converter.BaseConverter):
         if image_size < min_image_size:
             self.__logger.error("image size is too small, min image size:%s, your setting size:%s" % (min_image_size, image_size))
         self.__image_size = image_size
-        self.__evaluator = common.evaluator_numeric.simple.SimpleEvaluator(message_level, message_formatter)
+        self.__evaluator = common.evaluator_numeric.revealed.RevealedEvaluator(message_level, message_formatter)
 
     def convert(self, convert_info):
-        for log_rows, log_index in zip(convert_info.logs, range(len(convert_info.logs))):
+        for log_index in range(len(convert_info.logs)):
+            log_rows = convert_info.logs[log_index]
             game_setting = common.info.GameSetting(log_rows)
             self._init_game_info(game_setting)
             targets = convert_info.narrow_down_targets(log_rows, game_setting)
             data_set = DataSet(self.__logger, self.__image_size, convert_info, game_setting, log_index)
-            for num_of_player in range(game_setting.player_num):
-                answer_file = open(os.path.join(convert_info.output_answer_dir, '%s_%s' % (log_index, num_of_player)), 'w')
-                answer_file.write(str(common.role.str_to_index(game_setting.player_roles[num_of_player])))
-                answer_file.close()
             for log_row in log_rows:
                 self.__log_row_to_data_row(log_row, game_setting, targets, convert_info, data_set)
                 convert_info.update_progress()
@@ -91,5 +88,8 @@ class DataSet:
             image.save(os.path.join(self.__output_data_dir, '%s_%s_%s.png' % (self.__log_index, subject, self.__filenum[subject])))
         if self.__mode == 'test':
             image.save(os.path.join(self.__output_data_dir, game_setting.player_roles[subject], '%s_%s_%s.png' % (self.__log_index, subject, self.__filenum[subject])))
+        answer_file = open(os.path.join(convert_info.output_answer_dir, '%s_%s_%s' % (self.__log_index, subject, self.__filenum[subject])), 'w')
+        answer_file.write(str(common.role.str_to_index(game_setting.player_roles[subject])))
+        answer_file.close()
         convert_info.role_filenum_map[role] += 1
         self.__filenum[subject] += 1

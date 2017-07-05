@@ -17,7 +17,7 @@ def parse_args(config, message_formatter):
     message_mode.add_argument('-v', '--verbose', action='store_true', help='show verbose message')
     message_mode.add_argument('-q', '--quiet', action='store_true', help='quiet any message')
 
-    argparser.add_argument('-o', '--output_dir', metavar='OUTPUT_DIR', dest='ouput_dir', help='output to a directory named <directory>')
+    argparser.add_argument('-o', '--output_dir', metavar='OUTPUT_DIR', dest='output_dir', help='output to a directory named <directory>')
 
     argparser.add_argument('--dry_run', action='store_true', help='remove the output file after execution')
 
@@ -58,7 +58,7 @@ def parse_args(config, message_formatter):
 
     config.set_output_num(args.output_num)
 
-    if hasattr(args, 'output_dir'):
+    if not args.output_dir is None:
         config.set_output_dirs(args.output_dir)
     else:
         config.set_output_dirs(config.get_input_dir() + '_out')
@@ -78,6 +78,7 @@ def parse_args(config, message_formatter):
     elif args.test:
         for player in args.test:
             config.include_players.append(player)
+        config.mode = "test"
     elif args.train_except:
         for player in args.train_except:
             config.except_players.append(player)

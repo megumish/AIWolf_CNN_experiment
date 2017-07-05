@@ -54,12 +54,15 @@ def parse_args(config, message_formatter):
     config.epoch_num = args.epoch_num
     config.batch_size = args.batch_size
 
-    if hasattr(args, 'output_model'):
+    if not args.output_model is None:
         config.set_output_model(args.output_model)
     else:
         input_name = config.get_input_dir()
         input_name = os.path.normpath(input_name)
+        print(input_name)
         config.set_output_model(input_name + '_out')
+    if not os.path.isdir(config.get_output_model()):
+        os.makedirs(config.get_output_model())
 
     config.use_gpu = args.use_gpu
 
