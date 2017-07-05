@@ -58,13 +58,13 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         
     def train(self, learn_info):
         xp = numpy
-#       if learn_info.use_gpu:
-#           xp = cuda.cupy
-#       gpu = 0
-#       cuda.get_device(gpu).use()
-#       model.to_gpu(gpu)
-        X = xp.array(learn_info.data.inputs[None])
-        y = xp.array(learn_info.data.answers[None])
+        if learn_info.use_gpu:
+            xp = cuda.cupy
+            gpu = 0
+            cuda.get_device(gpu).use()
+            self.__model.to_gpu(gpu)
+        X = numpy.array(learn_info.data.inputs[None])
+        y = numpy.array(learn_info.data.answers[None])
         y = y.astype(xp.int32)
         N = y.size
         X = X.reshape((-1, 1, learn_info.data.image_size, learn_info.data.image_size))
@@ -82,43 +82,75 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
                 self.__optimizer.update()
                 sum_loss += float(loss.data) * len(y_batch)
                 sum_accuracy += float(accuracy.data) * len(y_batch)
+            print('epoch %d' % (epoch))
             print('train mean loss: %f' % (sum_loss  / N))
             print('train mean accuracy: %f' % (sum_accuracy / N))
-        #if learn_info.use_gpu:
-        #   model.to_cpu()
+        if learn_info.use_gpu:
+           self.__model.to_cpu()
         serializers.save_npz('%s.npz' % (learn_info.output_model), self.__model)
 
     def test(self, learn_info):
         xp = numpy
-#       if learn_info.use_gpu:
-#           xp = cuda.cupy
-#       gpu = 0
-#       cuda.get_device(gpu).use()
-#       model.to_gpu(gpu)
-        for role in common.role.types:
-            print('%s:' % (role))
-            print(learn_info.data.inputs.keys())
-            X = xp.array(learn_info.data.inputs[role])
-            y = xp.array(learn_info.data.answers[role])
+        if learn_info.use_gpu:
+            xp = cuda.cupy
+            gpu = 0
+            cuda.get_device(gpu).use()
+            self.__model.to_gpu(gpu)
+        count_hits = xp.zeros(6)
+        count_hits_each_real = xp.zeros((6,6))
+        N = 0
+        for real_role in common.role.types:
+            X = numpy.array(learn_info.data.inputs[real_role])
+            y = numpy.array(learn_info.data.answers[real_role])
             y = y.astype(xp.int32)
             N = y.size
             X = X.reshape((-1, 1, learn_info.data.image_size, learn_info.data.image_size))
-            for epoch in range(learn_info.epoch_num):
-                perm = numpy.random.permutation(N)
-                sum_loss = 0.0
-                sum_accuracy = 0.0
-                for i in range(0, N, learn_info.batch_size):
-                    X_batch = xp.asarray(X[perm[i:i + learn_info.batch_size]])
-                    y_batch = xp.asarray(y[perm[i:i + learn_info.batch_size]])
+            perm = numpy.random.permutation(N)
+            sum_data = xp.zeros(6)
+            sum_accuracy = 0.0
+            for i in range(0, N, learn_info.batch_size):
+                X_batch = xp.asarray(X[perm[i:i + learn_info.batch_size]])
+                y_batch = xp.asarray(y[perm[i:i + learn_info.batch_size]])
 
-                    self.__optimizer.zero_grads()
-                    loss, accuracy = self.__model(X_batch, y_batch, False)
-                    loss.backward()
-                    self.__optimizer.update()
-                    sum_loss += float(loss.data) * len(y_batch)
-                    sum_accuracy += float(accuracy.data) * len(y_batch)
-                print('train mean loss: %f' % (sum_loss  / N))
-                print('train mean accuracy: %f' % (sum_accuracy / N))
+                accuracy, data = self.__model(X_batch, y_batch, True)
+                sum_accuracy += float(accuracy.data)
+                max_num = xp.amax(data)
+                new_data = xp.zeros(6)
+                j = 0
+                for a_s in data:
+                    for n in a_s:
+                        if n == max_num:
+                            new_data[j] = 1.0
+                        else:
+                            new_data[j] = 0.0
+                        j += 1
+                sum_data += new_data
+            count_hits += sum_data
+            count_hits_each_real[common.role.str_to_index(real_role)] = sum_data
+        for real_role in common.role.types:
+            print('%s:' % (real_role))
+            real_role_index = common.role.str_to_index(real_role)
+            precisions = xp.zeros(6)
+            recalls = xp.zeros(6)
+            f_measures = xp.zeros(6)
+            for assume_role in common.role.types:
+                assume_role_index = common.role.str_to_index(assume_role)
+                true_positive = count_hits_each_real[real_role_index][assume_role_index]
+                precision = true_positive / count_hits[assume_role_index]
+                recall = true_positive / N
+                f_measure = (2 * recall * precision) / (recall + precision)
+                if recall == 0.0 or precision == 0.0:
+                    f_measure = 0.0
+                precisions[assume_role_index] = precision
+                recalls[assume_role_index] = recall
+                f_measures[assume_role_index] = f_measure
+            print("precision:%s" % (str(precisions[real_role_index])))
+            print("precisions:%s" % (str(precisions)))
+            print("recall:%s" % (str(recalls[real_role_index])))
+            print("recalls:%s" % (str(recalls)))
+            print("f_measure:%s" % (str(f_measures[real_role_index])))
+            print("f_measures:%s" % (str(f_measures)))
+
 class Model:
     pass
 
@@ -139,4 +171,4 @@ class CNN_SimpleModel(chainer.Chain):
         if not is_test:
             return F.softmax_cross_entropy(h3, t), F.accuracy(h3, t)
         else:
-            return F.softmax(h3)
+            return F.accuracy(h3,t) ,F.softmax(h3).data
