@@ -30,7 +30,7 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         model.input_size = learn_info.data.image_size
         model.input_pad = 2
         model.input_size += model.input_pad * 2
-        print(model.input_size)
+        print('input_size:%s' % (model.input_size))
         model.input_filter = model.input_size // 4
         model.conv0_output_layer = 20
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.input_layer, model.conv0_output_layer, model.input_filter, model.input_pad))
@@ -39,14 +39,14 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
             model.hidden0_size //= 2
         model.hidden0_pad = 2
         model.hidden0_size += model.hidden0_pad * 2
-        print(model.hidden0_size)
+        print('hidden0_size:%s' % (model.hidden0_size))
         model.hidden0_filter = model.hidden0_size // 4
         model.conv1_output_layer = 50
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.conv0_output_layer, model.conv1_output_layer, model.hidden0_filter, model.hidden0_pad))
         model.hidden1_size = model.hidden0_size - model.hidden0_filter + 1
         if model.do_pooling:
             model.hidden1_size //= 2
-        print(model.hidden1_size)
+        print('hidden1_size:%s' % (model.hidden1_size))
         model.hidden1_vector_size = model.hidden1_size * model.hidden1_size * model.conv1_output_layer
         model.hidden2_vector_size = 500 # model.hidden1_vector_size // 16
         build_info.write('l0=L.Linear(%s, %s)' % (model.hidden1_vector_size, model.hidden2_vector_size))
@@ -135,8 +135,10 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
             count_hits += sum_data
             count_hits_each_real[common.role.str_to_index(real_role)] = sum_data
         print('train mean accuracy: %f' % (total_sum_accuracy / total_N))
+        precisions_results = {}
+        recalls_results = {}
+        f_measures_results = {}
         for real_role in common.role.types:
-            print('%s:' % (real_role))
             real_role_index = common.role.str_to_index(real_role)
             precisions = xp.zeros(6)
             recalls = xp.zeros(6)
@@ -152,12 +154,75 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
                 precisions[assume_role_index] = precision
                 recalls[assume_role_index] = recall
                 f_measures[assume_role_index] = f_measure
-            print("precision:%s" % (str(precisions[real_role_index])))
-            print("precisions:%s" % (str(precisions)))
-            print("recall:%s" % (str(recalls[real_role_index])))
-            print("recalls:%s" % (str(recalls)))
-            print("f_measure:%s" % (str(f_measures[real_role_index])))
-            print("f_measures:%s" % (str(f_measures)))
+            precisions_results[real_role] = precisions
+            recalls_results[real_role] = recalls
+            f_measures_results[real_role] = f_measures
+        print('Precisions')
+        precisions_table = ''
+        is_start = True
+        precisions_table += '%9s ' % (' ')
+        for real_role in common.role.types:
+            if not is_start:
+                precisions_table += ' &'
+            precisions_table += '%10s' % (real_role)
+            is_start = False
+        precisions_table += ' \\\\ \\hline \\hline \n'
+        for real_role in common.role.types:
+            precisions = precisions_results[real_role]
+            is_start = True
+            precisions_table += '%9s ' % (real_role)
+            for assume_role in common.role.types:
+                assume_role_index = common.role.str_to_index(assume_role)
+                if not is_start:
+                    precisions_table += ' &'
+                precisions_table += '%10.2f' % (precisions[assume_role_index])
+                is_start = False
+            precisions_table += ' \\\\ \\hline \n'
+        print(precisions_table)
+        print('Recalls')
+        recalls_table = ''
+        is_start = True
+        recalls_table += '%9s ' % (' ')
+        for real_role in common.role.types:
+            if not is_start:
+                recalls_table += ' &'
+            recalls_table += '%10s' % (real_role)
+            is_start = False
+        recalls_table += ' \\\\ \\hline \\hline \n'
+        for real_role in common.role.types:
+            recalls = recalls_results[real_role]
+            is_start = True
+            recalls_table += '%9s ' % (real_role)
+            for assume_role in common.role.types:
+                assume_role_index = common.role.str_to_index(assume_role)
+                if not is_start:
+                    recalls_table += ' &'
+                recalls_table += '%10.2f' % (recalls[assume_role_index])
+                is_start = False
+            recalls_table += ' \\\\ \\hline \n'
+        print(recalls_table)
+        print('F-Measures')
+        f_measures_table = ''
+        is_start = True
+        f_measures_table += '%9s ' % (' ')
+        for real_role in common.role.types:
+            if not is_start:
+                f_measures_table += ' &'
+            f_measures_table += '%10s' % (real_role)
+            is_start = False
+        f_measures_table += ' \\\\ \\hline \\hline \n'
+        for real_role in common.role.types:
+            f_measures = f_measures_results[real_role]
+            is_start = True
+            f_measures_table += '%9s ' % (real_role)
+            for assume_role in common.role.types:
+                assume_role_index = common.role.str_to_index(assume_role)
+                if not is_start:
+                    f_measures_table += ' &'
+                f_measures_table += '%10.2f' % (f_measures[assume_role_index])
+                is_start = False
+            f_measures_table += ' \\\\ \\hline \n'
+        print(f_measures_table)
 
 class Model:
     pass

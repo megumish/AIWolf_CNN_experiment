@@ -26,7 +26,7 @@ class CNN_converter(log_to_data.converter.BaseConverter):
         if image_size < min_image_size:
             self.__logger.error("image size is too small, min image size:%s, your setting size:%s" % (min_image_size, image_size))
         self.__image_size = image_size
-        self.__evaluator = common.evaluator_numeric.revealed.RevealedEvaluator(message_level, message_formatter)
+        self.__evaluator = common.evaluator_numeric.simple.SimpleEvaluator(message_level, message_formatter)
 
     def convert(self, convert_info):
         for log_index in range(len(convert_info.logs)):
