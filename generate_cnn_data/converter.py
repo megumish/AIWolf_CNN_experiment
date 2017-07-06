@@ -35,7 +35,8 @@ class CNN_converter(log_to_data.converter.BaseConverter):
             self._init_game_info(game_setting)
             targets = convert_info.narrow_down_targets(log_rows, game_setting)
             data_set = DataSet(self.__logger, self.__image_size, convert_info, game_setting, log_index)
-            for log_row in log_rows:
+            for num_of_log_row in range(len(log_rows)):
+                log_row = log_rows[num_of_log_row]
                 self.__log_row_to_data_row(log_row, game_setting, targets, convert_info, data_set)
                 convert_info.update_progress()
                 is_end = True
@@ -63,7 +64,7 @@ class CNN_converter(log_to_data.converter.BaseConverter):
 class DataSet:
     def __init__(self, logger, image_size, convert_info, game_setting, log_index):
         self.__logger = logger
-        self.__datas = [numpy.zeros((image_size, image_size)) for i in range(game_setting.player_num)]
+        self.__data = [numpy.zeros((image_size, image_size)) for i in range(game_setting.player_num)]
         self.__log_index = log_index
         self.__data_size = image_size
         self.__output_data_dir = convert_info.output_data_dir
@@ -76,13 +77,13 @@ class DataSet:
         if convert_info.role_filenum_map[role] == convert_info.output_num:
             self.__logger.debug("over output num, so skip")
             return
-        self.__datas[subject] = numpy.delete(self.__datas[subject], 0, 0)
+        self.__data[subject] = numpy.delete(self.__data[subject], 0, 0)
         data_row = numpy.zeros(self.__data_size)
         for count in range(len(values)):
             value = values[count]
             data_row[index + count] = value
-        self.__datas[subject] = numpy.append(self.__datas[subject], [data_row], axis=0)
-        image = Image.fromarray(numpy.uint8(self.__datas[subject]))
+        self.__data[subject] = numpy.append(self.__data[subject], [data_row], axis=0)
+        image = Image.fromarray(numpy.uint8(self.__data[subject]))
         #image = image.resize((self.__data_size * 100, self.__data_size * 100))
         if self.__mode == 'train':
             image.save(os.path.join(self.__output_data_dir, '%s_%s_%s.png' % (self.__log_index, subject, self.__filenum[subject])))

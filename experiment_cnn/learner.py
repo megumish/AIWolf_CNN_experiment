@@ -25,25 +25,28 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
     def build(self, learn_info):
         build_info = open(os.path.join(learn_info.output_model, 'build.txt'), 'w')
         model = Model()
-        model.do_pooling = False
+        model.do_pooling = True
         model.input_layer = 1
         model.input_size = learn_info.data.image_size
-        model.input_pad = 2
+        model.input_pad = 0
         model.input_size += model.input_pad * 2
+        print(model.input_size)
         model.input_filter = model.input_size // 4
         model.conv0_output_layer = 20
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.input_layer, model.conv0_output_layer, model.input_filter, model.input_pad))
         model.hidden0_size = model.input_size - model.input_filter + 1
         if model.do_pooling:
             model.hidden0_size //= 2
-        model.hidden0_pad = 2
+        model.hidden0_pad = 0
         model.hidden0_size += model.hidden0_pad * 2
+        print(model.hidden0_size)
         model.hidden0_filter = model.hidden0_size // 4
         model.conv1_output_layer = 50
         build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.conv0_output_layer, model.conv1_output_layer, model.hidden0_filter, model.hidden0_pad))
         model.hidden1_size = model.hidden0_size - model.hidden0_filter + 1
         if model.do_pooling:
             model.hidden1_size //= 2
+        print(model.hidden1_size)
         model.hidden1_vector_size = model.hidden1_size * model.hidden1_size * model.conv1_output_layer
         model.hidden2_vector_size = 500 # model.hidden1_vector_size // 16
         build_info.write('l0=L.Linear(%s, %s)' % (model.hidden1_vector_size, model.hidden2_vector_size))
@@ -99,21 +102,24 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         count_hits = xp.zeros(6)
         count_hits_each_real = xp.zeros((6,6))
         N = 0
+        total_N = 0
+        total_sum_accuracy = 0.0
         for real_role in common.role.types:
             X = numpy.array(learn_info.data.inputs[real_role])
             y = numpy.array(learn_info.data.answers[real_role])
             y = y.astype(xp.int32)
             N = y.size
+            total_N += N
             X = X.reshape((-1, 1, learn_info.data.image_size, learn_info.data.image_size))
-            perm = numpy.random.permutation(N)
             sum_data = xp.zeros(6)
             sum_accuracy = 0.0
-            for i in range(0, N, learn_info.batch_size):
-                X_batch = xp.asarray(X[perm[i:i + learn_info.batch_size]])
-                y_batch = xp.asarray(y[perm[i:i + learn_info.batch_size]])
+            for i in range(0, N):
+                X_batch = xp.asarray([X[i]])
+                y_batch = xp.asarray([y[i]])
 
                 accuracy, data = self.__model(X_batch, y_batch, True)
                 sum_accuracy += float(accuracy.data)
+                total_sum_accuracy
                 max_num = xp.amax(data)
                 new_data = xp.zeros(6)
                 j = 0
@@ -125,8 +131,10 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
                             new_data[j] = 0.0
                         j += 1
                 sum_data += new_data
+            total_sum_accuracy += sum_accuracy
             count_hits += sum_data
             count_hits_each_real[common.role.str_to_index(real_role)] = sum_data
+        print('train mean accuracy: %f' % (total_sum_accuracy / total_N))
         for real_role in common.role.types:
             print('%s:' % (real_role))
             real_role_index = common.role.str_to_index(real_role)
@@ -162,10 +170,15 @@ class CNN_SimpleModel(chainer.Chain):
             l0 = L.Linear(model.hidden1_vector_size, model.hidden2_vector_size),
             l1 = L.Linear(model.hidden2_vector_size, model.output_vector_size)
         )
+        self.do_pooling = model.do_pooling
 
     def __call__(self, x, t, is_test):
         h0 = F.relu(self.conv0(x))
+        if self.do_pooling:
+            h0 = F.max_pooling_2d(h0, 2)
         h1 = F.relu(self.conv1(h0))
+        if self.do_pooling:
+            h1 = F.max_pooling_2d(h1, 2)
         h2 = F.dropout(F.relu(self.l0(h1)))
         h3 = self.l1(h2)
         if not is_test:
