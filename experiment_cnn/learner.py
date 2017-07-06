@@ -28,7 +28,7 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         model.do_pooling = True
         model.input_layer = 1
         model.input_size = learn_info.data.image_size
-        model.input_pad = 0
+        model.input_pad = 2
         model.input_size += model.input_pad * 2
         print(model.input_size)
         model.input_filter = model.input_size // 4
@@ -37,7 +37,7 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
         model.hidden0_size = model.input_size - model.input_filter + 1
         if model.do_pooling:
             model.hidden0_size //= 2
-        model.hidden0_pad = 0
+        model.hidden0_pad = 2
         model.hidden0_size += model.hidden0_pad * 2
         print(model.hidden0_size)
         model.hidden0_filter = model.hidden0_size // 4
@@ -179,7 +179,7 @@ class CNN_SimpleModel(chainer.Chain):
         h1 = F.relu(self.conv1(h0))
         if self.do_pooling:
             h1 = F.max_pooling_2d(h1, 2)
-        h2 = F.dropout(F.relu(self.l0(h1)))
+        h2 = F.dropout(F.relu(self.l0(h1)), train=not is_test)
         h3 = self.l1(h2)
         if not is_test:
             return F.softmax_cross_entropy(h3, t), F.accuracy(h3, t)

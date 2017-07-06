@@ -101,4 +101,4 @@ if __name__ == "__main__":
     message_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     message_level = parse_args(config, message_formatter)
     gen.init(config, message_level=message_level, message_formatter=message_formatter)
-    gen.run(converter.CNN_converter(image_size=28, message_level=message_level, message_formatter=message_formatter))
+    gen.run(converter.CNN_converter(message_level=message_level, message_formatter=message_formatter))
