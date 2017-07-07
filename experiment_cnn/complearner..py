@@ -12,7 +12,7 @@ sys.path.append(os.environ['KAWADA_AIWOLF_EXPERIMENT_PATH'])
 from common import log_to_data
 import common
 
-class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
+class Comp_SimpleLearner(log_to_data.converter.BaseConverter):
     def __init__(self, image_size=-1, message_level=logging.WARNING, message_formatter=None):
         self.__logger = logging.getLogger(__name__)
         handler = logging.StreamHandler()
@@ -25,59 +25,14 @@ class CNN_SimpleLearner(log_to_data.converter.BaseConverter):
     def build(self, learn_info):
         build_info = open(os.path.join(learn_info.output_model, 'build.txt'), 'w')
         model = Model()
-        model.do_pooling = False
-        model.input_layer = 1
         model.input_size = learn_info.data.image_size
-        model.input_pad = 0
-        model.input_size += model.input_pad * 2
-        model.input_height = model.input_size
-        model.input_width = model.input_size
-        print('input_height:%s' % (model.input_height))
-        print('input_width:%s' % (model.input_width))
-        model.input_filter = (model.input_height // 4, model.input_width)
-        model.conv0_output_layer = 20
-        build_info.write('conv0=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.input_layer, model.conv0_output_layer, model.input_filter, model.input_pad))
-        model.hidden0_height = model.input_height - model.input_filter[0] + 1
-        model.hidden0_width = 1
-        if model.do_pooling:
-            model.hidden0_height //= 2
-            model.hidden0_width //= 2
-        model.hidden0_pad = 0
-        model.hidden0_height += model.hidden0_pad * 2
-        model.hidden0_width += model.hidden0_pad * 2
-        print('hidden0_height:%s' % (model.hidden0_height))
-        print('hidden0_width:%s' % (model.hidden0_width))
-        model.hidden0_filter = (model.hidden0_height // 4, model.hidden0_width)
-        model.conv1_output_layer = 50
-        build_info.write('conv1=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.conv0_output_layer, model.conv1_output_layer, model.hidden0_filter, model.hidden0_pad))
-        model.hidden1_height = model.hidden0_height - model.hidden0_filter[0] + 1
-        model.hidden1_width = 1
-        if model.do_pooling:
-            model.hidden1_height //= 2
-            model.hidden1_width //= 2
-        model.hidden1_pad = 0
-        model.hidden1_height += model.hidden1_pad * 2
-        model.hidden1_width += model.hidden1_pad * 2
-        print('hidden1_height:%s' % (model.hidden1_height))
-        print('hidden1_width:%s' % (model.hidden1_width))
-        model.hidden1_filter = (model.hidden1_height // 4, model.hidden1_width)
-        model.conv2_output_layer = 100
-        build_info.write('conv2=L.Convolution2D(%s, %s, %s, pad=%s)' % (model.conv1_output_layer, model.conv2_output_layer, model.hidden1_filter, model.hidden1_pad))
-        model.hidden2_height = model.hidden1_height - model.hidden1_filter[0] + 1
-        model.hidden2_width = 1
-        if model.do_pooling:
-            model.hidden2_height //= 2
-            model.hidden2_width //= 2
-        model.hidden2_pad = 0
-        model.hidden2_height += model.hidden2_pad * 2
-        model.hidden2_width += model.hidden2_pad * 2
-        print('hidden2_height:%s' % (model.hidden2_height))
-        print('hidden2_width:%s' % (model.hidden2_width))
-        model.hidden2_vector_size = model.hidden2_height * model.hidden2_width * model.conv2_output_layer
-        model.hidden3_vector_size = 500 # model.hidden1_vector_size // 16
-        build_info.write('l0=L.Linear(%s, %s)' % (model.hidden2_vector_size, model.hidden3_vector_size))
+        model.input_vector_size = model.input_size * model.input_size
+        model.hidden0_vector_size = 500 
+        build_info.write('l0=L.Linear(%s, %s)' % (model.input_vector_size, model.hidden0_vector_size))
+        model.hidden1_vector_size = 300 
+        build_info.write('l1=L.Linear(%s, %s)' % (model.hidden0_vector_size, model.hidden1_vector_size))
         model.output_vector_size = len(common.role.types)
-        build_info.write('l1=L.Linear(%s, %s)' % (model.hidden3_vector_size, model.output_vector_size))
+        build_info.write('l2=L.Linear(%s, %s)' % (model.hidden1_vector_size, model.output_vector_size))
         build_info.close()
         self.__model = CNN_SimpleModel(model)
         if not learn_info.learned_model is None:
@@ -256,27 +211,17 @@ class Model:
 class CNN_SimpleModel(chainer.Chain):
     def __init__(self, model):
         super(CNN_SimpleModel, self).__init__(
-            conv0 = L.Convolution2D(model.input_layer, model.conv0_output_layer, model.input_filter, pad=model.input_pad),
-            conv1 = L.Convolution2D(model.conv0_output_layer, model.conv1_output_layer, model.hidden0_filter, pad=model.hidden0_pad),
-            conv2 = L.Convolution2D(model.conv1_output_layer, model.conv2_output_layer, model.hidden1_filter, pad=model.hidden1_pad),
-            l0 = L.Linear(model.hidden2_vector_size, model.hidden3_vector_size),
-            l1 = L.Linear(model.hidden3_vector_size, model.output_vector_size)
+            l0 = L.Linear(model.input_vector_size, model.hidden0_vector_size),
+            l1 = L.Linear(model.hidden0_vector_size, model.hidden1_vector_size),
+            l2 = L.Linear(model.hidden1_vector_size, model.output_vector_size)
         )
         self.do_pooling = model.do_pooling
 
     def __call__(self, x, t, is_test):
-        h0 = F.relu(self.conv0(x))
-        if self.do_pooling:
-            h0 = F.max_pooling_2d(h0, 2)
-        h1 = F.relu(self.conv1(h0))
-        if self.do_pooling:
-            h1 = F.max_pooling_2d(h1, 2)
-        h2 = F.relu(self.conv1(h1))
-        if self.do_pooling:
-            h2 = F.max_pooling_2d(h2, 2)
-        h3 = F.dropout(F.relu(self.l0(h2)), train=not is_test)
-        h4 = self.l1(h3)
+        h0 = F.relu(self.l0(x))
+        h1 = F.dropout(F.relu(self.l1(h0)), train=not is_test)
+        h2 = self.l2(h1)
         if not is_test:
-            return F.softmax_cross_entropy(h4, t), F.accuracy(h4, t)
+            return F.softmax_cross_entropy(h2, t), F.accuracy(h2, t)
         else:
-            return F.accuracy(h4,t) ,F.softmax(h4).data
+            return F.accuracy(h2,t) ,F.softmax(h2).data
